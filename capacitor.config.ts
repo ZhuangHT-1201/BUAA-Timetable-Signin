@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.classmark.mobile',
-  appName: '课迹',
+  appId: 'io.github.zhuanght1201.buaatimetablesign',
+  appName: 'BUAA Timetable & Sign-in',
   webDir: 'dist',
   backgroundColor: '#f3f5f0',
   android: {

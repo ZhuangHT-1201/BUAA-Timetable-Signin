@@ -1,8 +1,17 @@
-const { app, BrowserWindow, ipcMain, session, shell } = require('electron');
+const {
+  app,
+  BrowserWindow,
+  ipcMain,
+  Menu,
+  nativeImage,
+  session,
+  shell,
+  Tray,
+} = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 
-const APP_SCHEME = 'classmark';
+const APP_SCHEME = 'buaa-timetable-signin';
 const ALLOWED_HOSTS = new Set([
   'byxt.buaa.edu.cn',
   'sso.buaa.edu.cn',
@@ -14,6 +23,69 @@ const ALLOWED_HOSTS = new Set([
 
 let mainWindow = null;
 let authWindow = null;
+let tray = null;
+let backgroundEnabled = false;
+let isQuitting = false;
+let backgroundLabels = {
+  open: 'Open BUAA Timetable & Sign-in',
+  quit: 'Quit',
+};
+
+function showMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    createMainWindow();
+    return;
+  }
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+}
+
+function destroyTray() {
+  if (tray && !tray.isDestroyed()) tray.destroy();
+  tray = null;
+}
+
+function updateTray(enabled, labels = backgroundLabels) {
+  backgroundEnabled = Boolean(enabled);
+  backgroundLabels = labels;
+  if (!backgroundEnabled) {
+    destroyTray();
+    return;
+  }
+  if (tray) {
+    tray.setContextMenu(Menu.buildFromTemplate([
+      { label: backgroundLabels.open, click: showMainWindow },
+      { type: 'separator' },
+      {
+        label: backgroundLabels.quit,
+        click: () => {
+          isQuitting = true;
+          backgroundEnabled = false;
+          destroyTray();
+          app.quit();
+        },
+      },
+    ]));
+    return;
+  }
+  tray = new Tray(nativeImage.createFromPath(path.join(__dirname, '..', 'resources', 'icon.png')));
+  tray.setToolTip(backgroundLabels.open);
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: backgroundLabels.open, click: showMainWindow },
+    { type: 'separator' },
+    {
+      label: backgroundLabels.quit,
+      click: () => {
+        isQuitting = true;
+        backgroundEnabled = false;
+        destroyTray();
+        app.quit();
+      },
+    },
+  ]));
+  tray.on('click', showMainWindow);
+}
 
 function isAllowedCampusUrl(value) {
   try {
@@ -35,7 +107,7 @@ function createMainWindow() {
     minHeight: 660,
     show: false,
     backgroundColor: '#f3f5f0',
-    title: '课迹',
+    title: 'BUAA Timetable & Sign-in',
     autoHideMenuBar: true,
     icon: path.join(__dirname, '..', 'resources', 'icon.png'),
     webPreferences: {
@@ -44,6 +116,7 @@ function createMainWindow() {
       nodeIntegration: false,
       sandbox: true,
       webSecurity: true,
+      backgroundThrottling: false,
     },
   });
 
@@ -73,6 +146,12 @@ function createMainWindow() {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
+  });
+
+  mainWindow.on('close', (event) => {
+    if (!backgroundEnabled || isQuitting) return;
+    event.preventDefault();
+    mainWindow.hide();
   });
 }
 
@@ -245,15 +324,22 @@ ipcMain.handle('campus:open-external', async (_event, url) => {
   if (!/^https?:\/\//i.test(url)) throw new Error('不支持的外部链接');
   await shell.openExternal(url);
 });
+ipcMain.handle('campus:set-background-monitor', (_event, input) => {
+  updateTray(Boolean(input?.enabled), {
+    open: typeof input?.openLabel === 'string' ? input.openLabel : backgroundLabels.open,
+    quit: typeof input?.quitLabel === 'string' ? input.quitLabel : backgroundLabels.quit,
+  });
+  return {
+    enabled: backgroundEnabled,
+  };
+});
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
 } else {
   app.on('second-instance', () => {
-    if (!mainWindow) return;
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.focus();
+    showMainWindow();
   });
   app.whenReady().then(() => {
     createMainWindow();
@@ -264,5 +350,11 @@ if (!gotLock) {
 }
 
 app.on('window-all-closed', () => {
+  if (backgroundEnabled) return;
   if (process.platform !== 'darwin') app.quit();
+});
+
+app.on('before-quit', () => {
+  isQuitting = true;
+  destroyTray();
 });

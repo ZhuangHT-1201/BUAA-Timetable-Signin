@@ -1,7 +1,14 @@
 import type { Course, Week } from '../types';
+import type { Language } from '../i18n';
 
-const WEEKDAY_NAMES = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
-const SHORT_WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+const WEEKDAY_NAMES = {
+  zh: ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'],
+  en: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+};
+const SHORT_WEEKDAYS = {
+  zh: ['周日', '周一', '周二', '周三', '周四', '周五', '周六'],
+  en: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+};
 
 export function toIsoDate(date: Date): string {
   const year = date.getFullYear();
@@ -38,16 +45,24 @@ export function weekDates(week: Week | undefined, fallback = new Date()): Date[]
   return Array.from({ length: 7 }, (_, index) => addDays(start, index));
 }
 
-export function formatMonthDay(date: Date): string {
-  return `${date.getMonth() + 1}月${date.getDate()}日`;
+export function formatMonthDay(date: Date, language: Language = 'zh'): string {
+  return new Intl.DateTimeFormat(language === 'zh' ? 'zh-CN' : 'en-US', {
+    month: 'short',
+    day: 'numeric',
+  }).format(date);
 }
 
-export function formatFullDate(date: Date): string {
-  return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${WEEKDAY_NAMES[date.getDay()]}`;
+export function formatFullDate(date: Date, language: Language = 'zh'): string {
+  return new Intl.DateTimeFormat(language === 'zh' ? 'zh-CN' : 'en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    weekday: language === 'zh' ? 'long' : 'short',
+  }).format(date);
 }
 
-export function weekdayName(date: Date, short = false): string {
-  return (short ? SHORT_WEEKDAYS : WEEKDAY_NAMES)[date.getDay()];
+export function weekdayName(date: Date, short = false, language: Language = 'zh'): string {
+  return (short ? SHORT_WEEKDAYS : WEEKDAY_NAMES)[language][date.getDay()];
 }
 
 export function minuteOfDay(time: string | undefined): number | null {
@@ -62,9 +77,11 @@ export function currentMinute(): number {
   return now.getHours() * 60 + now.getMinutes();
 }
 
-export function relativeWeekLabel(week: Week | undefined): string {
-  if (!week) return '本周';
-  return `${week.name} · ${formatMonthDay(parseLocalDate(week.startDate))} 开始`;
+export function relativeWeekLabel(week: Week | undefined, language: Language = 'zh'): string {
+  if (!week) return language === 'zh' ? '本周' : 'This week';
+  return language === 'zh'
+    ? `${week.name} · ${formatMonthDay(parseLocalDate(week.startDate), language)} 开始`
+    : `Week ${week.number} · starts ${formatMonthDay(parseLocalDate(week.startDate), language)}`;
 }
 
 export function getDayCourses(courses: Course[], date: Date): Course[] {

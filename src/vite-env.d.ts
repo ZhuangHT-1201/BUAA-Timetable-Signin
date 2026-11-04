@@ -22,6 +22,12 @@ interface CampusBridge {
   }): Promise<{ success: boolean; url: string; cancelled?: boolean }>;
   clearSession(): Promise<void>;
   openExternal(url: string): Promise<void>;
+  setBackgroundMonitor(input: {
+    enabled: boolean;
+    openLabel: string;
+    quitLabel: string;
+    monitorText: string;
+  }): Promise<{ enabled: boolean }>;
 }
 
 interface Window {
@@ -42,6 +48,10 @@ interface Window {
         }>;
         clearSession(): Promise<void>;
         openExternal(input: { url: string }): Promise<void>;
+        setBackgroundMonitor(input: Record<string, unknown>): Promise<{
+          enabled: boolean;
+        }>;
+        syncMonitorSession(input: Record<string, unknown>): Promise<void>;
       };
     };
     isNativePlatform?: () => boolean;

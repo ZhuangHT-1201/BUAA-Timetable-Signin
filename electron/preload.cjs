@@ -6,4 +6,5 @@ contextBridge.exposeInMainWorld('CampusBridge', {
   openAuth: (input) => ipcRenderer.invoke('campus:open-auth', input),
   clearSession: () => ipcRenderer.invoke('campus:clear-session'),
   openExternal: (url) => ipcRenderer.invoke('campus:open-external', url),
+  setBackgroundMonitor: (input) => ipcRenderer.invoke('campus:set-background-monitor', input),
 });

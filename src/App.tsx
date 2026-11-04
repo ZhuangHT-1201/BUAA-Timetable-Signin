@@ -14,16 +14,23 @@ import { LoginScreen } from './components/LoginScreen';
 import { Logo } from './components/Logo';
 import { SettingsDialog } from './components/SettingsDialog';
 import { Toast, type ToastState } from './components/Toast';
-import { platformLabel } from './lib/bridge';
+import { LanguageToggle } from './components/LanguageToggle';
+import {
+  platformLabel,
+  setBackgroundMonitor,
+} from './lib/bridge';
+import { localizeErrorMessage, useI18n, type MessageKey, type Language } from './i18n';
 import { createDemoData } from './lib/demo';
 import {
   clearLocalData,
   clearScheduleCache,
   loadMode,
+  loadBackgroundEnabled,
   loadPreference,
   loadProfile,
   loadSchedule,
   saveMode,
+  saveBackgroundEnabled,
   savePreference,
   saveProfile,
   saveSchedule,
@@ -49,18 +56,18 @@ type Phase = 'booting' | 'login' | 'workspace';
 
 const NAV_ITEMS: Array<{
   value: ViewName;
-  label: string;
+  labelKey: MessageKey;
   icon: typeof Home;
 }> = [
-  { value: 'overview', label: '概览', icon: Home },
-  { value: 'schedule', label: '课表', icon: CalendarDays },
-  { value: 'attendance', label: '签到', icon: MapPinCheck },
+  { value: 'overview', labelKey: 'nav.overview', icon: Home },
+  { value: 'schedule', labelKey: 'nav.schedule', icon: CalendarDays },
+  { value: 'attendance', labelKey: 'nav.attendance', icon: MapPinCheck },
 ];
 
-function readableError(error: unknown): string {
-  if (error instanceof CampusError) return error.message;
+function readableError(error: unknown, fallback: string, language: Language): string {
+  if (error instanceof CampusError) return localizeErrorMessage(error.message, language);
   if (error instanceof Error) return error.message;
-  return '操作失败，请稍后重试。';
+  return fallback;
 }
 
 function emptyCachedState(): CachedSchedule | null {
@@ -68,6 +75,7 @@ function emptyCachedState(): CachedSchedule | null {
 }
 
 export default function App() {
+  const { t, language } = useI18n();
   const serviceRef = useRef(new CampusService());
   const restorePromiseRef = useRef<Promise<CampusSession> | null>(null);
   const toastTimer = useRef<number | null>(null);
@@ -96,6 +104,7 @@ export default function App() {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
+  const [backgroundEnabled, setBackgroundEnabled] = useState(() => loadBackgroundEnabled());
 
   const showToast = (message: string, tone: ToastState['tone'] = 'info') => {
     if (toastTimer.current) window.clearTimeout(toastTimer.current);
@@ -151,7 +160,7 @@ export default function App() {
       return true;
     } catch (signinError) {
       setSignins([]);
-      const message = readableError(signinError);
+      const message = readableError(signinError, t('error.generic'), language);
       setSigninError(message);
       if (signinError instanceof CampusError && signinError.kind === 'permission') {
         showToast(signinError.message, 'error');
@@ -185,7 +194,7 @@ export default function App() {
         void hydrateSignins();
       } catch {
         if (!active) return;
-        setError(savedCache ? '登录状态已失效，请重新连接校园账号。' : '无法恢复校园会话，请重新登录。');
+        setError(savedCache ? t('error.sessionExpired') : t('error.restoreSession'));
         setPhase('login');
       }
     };
@@ -202,16 +211,66 @@ export default function App() {
     [],
   );
 
+  useEffect(() => {
+    document.title = `${t('app.brand')} · ${t('app.brandMark')}`;
+  }, [language, t]);
+
+  useEffect(() => {
+    if (phase !== 'workspace') return;
+    void setBackgroundMonitor({
+      enabled: backgroundEnabled && !demo,
+      openLabel: t('background.open'),
+      quitLabel: t('background.quit'),
+      monitorText: t('background.monitorText'),
+    });
+  }, [backgroundEnabled, demo, language, phase, t]);
+
+  useEffect(() => {
+    if (
+      !backgroundEnabled ||
+      phase !== 'workspace' ||
+      offline ||
+      demo ||
+      platformLabel() !== 'Windows'
+    ) return;
+    let stopped = false;
+    const checkSignins = async () => {
+      try {
+        const next = await serviceRef.current.loadSignins();
+        if (stopped) return;
+        setSignins(next);
+        setSigninError('');
+        for (const course of next.filter((item) => item.status === 0)) {
+          const result = await serviceRef.current.signIn(course.courseId);
+          if (stopped) return;
+          if (result.success) {
+            setSignins((current) =>
+              current.map((item) =>
+                item.courseId === course.courseId ? { ...item, status: 1 } : item,
+              ),
+            );
+          }
+        }
+      } catch {}
+    };
+    void checkSignins();
+    const timer = window.setInterval(checkSignins, 60_000);
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+    };
+  }, [backgroundEnabled, demo, offline, phase, t]);
+
   const handleConnect = async () => {
     setBusy(true);
     setError('');
     savePreference(modePreference);
     try {
-      const session = await serviceRef.current.connect(modePreference);
+      const session = await serviceRef.current.connect(modePreference, t('auth.windowTitle'));
       applySession(session);
       void hydrateSignins();
     } catch (connectError) {
-      const message = readableError(connectError);
+      const message = readableError(connectError, t('error.generic'), language);
       setError(message);
     } finally {
       setBusy(false);
@@ -219,7 +278,7 @@ export default function App() {
   };
 
   const handleDemo = () => {
-    const data = createDemoData();
+    const data = createDemoData(language);
     const current = findSelectedWeek(data.weeks);
     const timestamp = new Date().toISOString();
     setProfile(data.profile);
@@ -236,13 +295,13 @@ export default function App() {
     setError('');
     setView('overview');
     setPhase('workspace');
-    showToast('演示模式', 'info');
+    showToast(t('toast.demo'), 'info');
   };
 
   const handleOffline = () => {
     const cache = loadSchedule();
     if (!cache) {
-      showToast('这台设备上还没有离线课表', 'error');
+      showToast(t('toast.noOffline'), 'error');
       return;
     }
     setProfile(loadProfile());
@@ -287,7 +346,7 @@ export default function App() {
     if (weekNumber < 1 || weekNumber > (weeks.at(-1)?.number ?? 1) || weekNumber === selectedWeek) return;
     if (offline || demo) {
       if (offline) {
-        showToast('离线模式只保留了上次同步的一周课表', 'info');
+        showToast(t('toast.offlineOneWeek'), 'info');
       } else {
         setSelectedWeek(weekNumber);
       }
@@ -300,7 +359,7 @@ export default function App() {
       setCourses(next);
       updateCache(next, selectedTermCode, weekNumber);
     } catch (weekError) {
-      showToast(readableError(weekError), 'error');
+      showToast(readableError(weekError, t('error.generic'), language), 'error');
     } finally {
       setWeekLoading(false);
     }
@@ -309,7 +368,7 @@ export default function App() {
   const handleTermChange = async (termCode: string) => {
     if (termCode === selectedTermCode) return;
     if (offline || demo) {
-      showToast('请重新连接校园账号后切换学期', 'info');
+      showToast(t('toast.reloginTerm'), 'info');
       return;
     }
     setWeekLoading(true);
@@ -317,7 +376,7 @@ export default function App() {
       const nextTerms = terms.map((term) => ({ ...term, selected: term.code === termCode }));
       const nextWeeks = await serviceRef.current.loadWeeks(termCode);
       const target = findSelectedWeek(nextWeeks);
-      if (!target) throw new CampusError('这个学期还没有周次信息。', 'data');
+      if (!target) throw new CampusError(t('error.noWeeks'), 'data');
       const nextCourses = await serviceRef.current.loadWeek(termCode, target.number);
       setTerms(nextTerms);
       setWeeks(nextWeeks);
@@ -326,7 +385,7 @@ export default function App() {
       setCourses(nextCourses);
       updateCache(nextCourses, termCode, target.number, nextWeeks);
     } catch (termError) {
-      showToast(readableError(termError), 'error');
+      showToast(readableError(termError, t('error.generic'), language), 'error');
     } finally {
       setWeekLoading(false);
     }
@@ -335,11 +394,11 @@ export default function App() {
   const handleRefresh = async () => {
     if (demo) {
       setCachedAt(new Date().toISOString());
-      showToast('演示数据已刷新', 'success');
+      showToast(t('toast.demoRefreshed'), 'success');
       return;
     }
     if (offline) {
-      showToast('离线模式无法同步，请重新登录', 'error');
+      showToast(t('toast.offlineNoSync'), 'error');
       return;
     }
     setBusy(true);
@@ -347,9 +406,9 @@ export default function App() {
       const session = await serviceRef.current.resume(mode);
       applySession(session);
       await hydrateSignins();
-      showToast('课表与签到状态已同步', 'success');
+      showToast(t('toast.synced'), 'success');
     } catch (refreshError) {
-      showToast(readableError(refreshError), 'error');
+      showToast(readableError(refreshError, t('error.generic'), language), 'error');
     } finally {
       setBusy(false);
     }
@@ -358,15 +417,15 @@ export default function App() {
   const handleRefreshSignins = async () => {
     if (demo) {
       setSignins((current) => [...current]);
-      showToast('演示签到状态已刷新', 'success');
+      showToast(t('toast.demoSigninRefreshed'), 'success');
       return;
     }
     if (offline) {
-      showToast('离线模式无法查询签到状态', 'error');
+      showToast(t('toast.offlineNoSignin'), 'error');
       return;
     }
     const refreshed = await hydrateSignins();
-    if (refreshed) showToast('签到状态已刷新', 'success');
+    if (refreshed) showToast(t('toast.signinRefreshed'), 'success');
   };
 
   const handleSignin = async (courseId: string) => {
@@ -377,7 +436,7 @@ export default function App() {
     setSigningCourseId(courseId);
     try {
       const result = await serviceRef.current.signIn(courseId);
-      showToast(result.message, result.success ? 'success' : 'error');
+      showToast(localizeErrorMessage(result.message, language), result.success ? 'success' : 'error');
       if (result.success) {
         setSigninError('');
         setSignins((current) =>
@@ -385,7 +444,7 @@ export default function App() {
         );
       }
     } catch (signinError) {
-      showToast(readableError(signinError), 'error');
+      showToast(readableError(signinError, t('error.generic'), language), 'error');
     } finally {
       setSigningCourseId(null);
     }
@@ -395,17 +454,25 @@ export default function App() {
     setSignins((current) =>
       current.map((item) => (item.courseId === courseId ? { ...item, status: 1 } : item)),
     );
-    showToast('演示签到成功', 'success');
+    showToast(t('toast.demoSigned'), 'success');
   };
 
   const handleLogout = async () => {
     setSettingsOpen(false);
     setBusy(true);
+    setBackgroundEnabled(false);
+    saveBackgroundEnabled(false);
+    try {
+      await setBackgroundMonitor({
+        enabled: false,
+        openLabel: t('background.open'),
+        quitLabel: t('background.quit'),
+        monitorText: t('background.monitorText'),
+      });
+    } catch {}
     try {
       if (!demo) await serviceRef.current.logout();
-    } catch {
-      // Local UI state is cleared regardless of the upstream logout result.
-    }
+    } catch {}
     clearLocalData(false);
     setProfile(null);
     setTerms([]);
@@ -431,7 +498,26 @@ export default function App() {
     setCachedSchedule(null);
     setCachedAt(null);
     setSettingsOpen(false);
-    showToast('离线缓存已清除', 'success');
+    showToast(t('toast.cacheCleared'), 'success');
+  };
+
+  const handleBackgroundChange = async (enabled: boolean) => {
+    setBackgroundEnabled(enabled);
+    saveBackgroundEnabled(enabled);
+    try {
+      const status = await setBackgroundMonitor({
+        enabled,
+        openLabel: t('background.open'),
+        quitLabel: t('background.quit'),
+        monitorText: t('background.monitorText'),
+      });
+      if (status.enabled !== enabled) throw new Error();
+      showToast(enabled ? t('toast.backgroundOn') : t('toast.backgroundOff'), 'success');
+    } catch {
+      setBackgroundEnabled(false);
+      saveBackgroundEnabled(false);
+      showToast(t('error.generic'), 'error');
+    }
   };
 
   if (phase === 'booting') return <BootScreen />;
@@ -519,14 +605,16 @@ export default function App() {
       <aside className="sidebar">
         <div className="sidebar__top">
           <Logo />
-          <span className={`sidebar__session ${offline ? 'is-offline' : ''}`}>
-            {offline ? <WifiOff size={13} /> : <Wifi size={13} />}
-            {offline ? '离线' : mode === 'webvpn' ? 'WebVPN' : '直连'}
-          </span>
+          <div className="sidebar__tools">
+            <span className={`sidebar__session ${offline ? 'is-offline' : ''}`}>
+              {offline ? <WifiOff size={13} /> : <Wifi size={13} />}
+              {offline ? t('common.offline') : mode === 'webvpn' ? t('common.webvpn') : t('common.direct')}
+            </span>
+          </div>
         </div>
 
-        <nav className="sidebar-nav" aria-label="主导航">
-          <p>你的校园</p>
+        <nav className="sidebar-nav" aria-label={t('nav.primary')}>
+          <p>{t('sidebar.campus')}</p>
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             return (
@@ -536,7 +624,7 @@ export default function App() {
                 onClick={() => navigate(item.value)}
               >
                 <span><Icon size={19} strokeWidth={2} /></span>
-                {item.label}
+                {t(item.labelKey)}
                 {item.value === 'attendance' && signins.some((signin) => signin.status === 0) && <i />}
               </button>
             );
@@ -544,9 +632,9 @@ export default function App() {
         </nav>
 
         <div className="sidebar__focus">
-          <span>本周</span>
-          <strong>{currentWeek?.name ?? '本周'}</strong>
-          <p>{courses.length ? `已安排 ${courses.length} 节课程` : '还没有课程安排'}</p>
+          <span>{t('common.week')}</span>
+          <strong>{currentWeek ? t('common.weekNumber', { number: currentWeek.number }) : t('common.week')}</strong>
+          <p>{courses.length ? t('sidebar.scheduled', { count: courses.length }) : t('sidebar.noCourses')}</p>
           <div className="focus-dots">
             {Array.from({ length: 7 }, (_, index) => (
               <i key={index} className={courses.some((course) => course.dayOfWeek === index + 1) ? 'has-course' : ''} />
@@ -555,10 +643,10 @@ export default function App() {
         </div>
 
         <div className="sidebar__bottom">
-          {demo && <span className="demo-ribbon"><Sparkles size={13} /> 演示模式</span>}
+          {demo && <span className="demo-ribbon"><Sparkles size={13} /> {t('common.demo')}</span>}
           <button className="profile-button" onClick={() => setSettingsOpen(true)}>
-            <span className="profile-button__avatar">{(profile?.displayName ?? '课').slice(0, 1)}</span>
-            <span><strong>{profile?.displayName ?? '校园用户'}</strong><small>{profile?.studentId ?? '个人账户'}</small></span>
+            <span className="profile-button__avatar">{(profile?.displayName ?? 'B').slice(0, 1)}</span>
+            <span><strong>{profile?.displayName ?? t('common.campusUser')}</strong><small>{profile?.studentId ?? t('common.personalAccount')}</small></span>
             <Settings2 size={18} />
           </button>
         </div>
@@ -567,14 +655,15 @@ export default function App() {
       <header className="mobile-header">
         <Logo compact />
         <div>
-          {demo && <span className="demo-ribbon"><Sparkles size={12} /> 演示</span>}
-          <button className="mobile-avatar" onClick={() => setSettingsOpen(true)}>{(profile?.displayName ?? '课').slice(0, 1)}</button>
+          {demo && <span className="demo-ribbon"><Sparkles size={12} /> {t('common.demo')}</span>}
+          <LanguageToggle compact />
+          <button className="mobile-avatar" onClick={() => setSettingsOpen(true)}>{(profile?.displayName ?? 'B').slice(0, 1)}</button>
         </div>
       </header>
 
       <div className="app-content">{page}</div>
 
-      <nav className="mobile-nav" aria-label="移动端主导航">
+      <nav className="mobile-nav" aria-label={t('nav.mobile')}>
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           return (
@@ -583,7 +672,7 @@ export default function App() {
                 <Icon size={20} />
                 {item.value === 'attendance' && signins.some((signin) => signin.status === 0) && <i />}
               </span>
-              {item.label}
+              {t(item.labelKey)}
             </button>
           );
         })}
@@ -597,6 +686,9 @@ export default function App() {
         week={currentWeek}
         cachedAt={cachedAt}
         offline={offline}
+        backgroundEnabled={backgroundEnabled}
+          backgroundAvailable={!demo && platformLabel() !== 'Web'}
+        onBackgroundChange={handleBackgroundChange}
         onClose={() => setSettingsOpen(false)}
         onLogout={handleLogout}
         onClearData={handleClearCache}

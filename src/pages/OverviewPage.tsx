@@ -9,6 +9,7 @@ import {
   TimerReset,
 } from 'lucide-react';
 import type { Profile, ResolvedConnectionMode, SigninClass, ViewName, Week, Course } from '../types';
+import { useI18n, type MessageKey } from '../i18n';
 import {
   formatFullDate,
   formatMonthDay,
@@ -33,13 +34,13 @@ interface OverviewPageProps {
   onCourseClick: (course: Course) => void;
 }
 
-function greeting(): string {
+function greetingKey(): MessageKey {
   const hour = new Date().getHours();
-  if (hour < 6) return '夜深了';
-  if (hour < 11) return '早上好';
-  if (hour < 14) return '中午好';
-  if (hour < 18) return '下午好';
-  return '晚上好';
+  if (hour < 6) return 'overview.night';
+  if (hour < 11) return 'overview.morning';
+  if (hour < 14) return 'overview.noon';
+  if (hour < 18) return 'overview.afternoon';
+  return 'overview.evening';
 }
 
 export function OverviewPage({
@@ -55,6 +56,7 @@ export function OverviewPage({
   onNavigate,
   onCourseClick,
 }: OverviewPageProps) {
+  const { t, language, locale } = useI18n();
   const now = new Date();
   const dates = weekDates(week, now);
   const today = dates.find((date) => date.toDateString() === now.toDateString()) ?? now;
@@ -75,18 +77,18 @@ export function OverviewPage({
     <div className="page page--overview">
       <header className="page-heading page-heading--overview">
         <div>
-          <p className="page-heading__date">{formatFullDate(now)}</p>
-          <h1>{greeting()}，{profile?.displayName ?? '同学'}</h1>
+          <p className="page-heading__date">{formatFullDate(now, language)}</p>
+          <h1>{t('overview.greeting', { greeting: t(greetingKey()), name: profile?.displayName ?? '—' })}</h1>
           <p className="page-heading__sub">
-            {dayCourses.length ? `今天有 ${dayCourses.length} 节课` : '今天没有课程'}
+            {dayCourses.length ? t('overview.todayCount', { count: dayCourses.length }) : t('overview.noToday')}
           </p>
         </div>
         <div className="heading-actions">
           <span className={`connection-chip ${offline ? 'connection-chip--offline' : ''}`}>
             <span />
-            {offline ? '离线课表' : mode === 'webvpn' ? 'WebVPN 已连接' : '校园直连'}
+            {offline ? t('overview.offlineSchedule') : mode === 'webvpn' ? t('overview.webvpnConnected') : t('overview.directConnected')}
           </span>
-          <button className="icon-button soft" onClick={onRefresh} disabled={refreshing || offline} aria-label="刷新课表">
+          <button className="icon-button soft" onClick={onRefresh} disabled={refreshing || offline} aria-label={t('overview.refreshSchedule')}>
             <RefreshCw size={19} className={refreshing ? 'spin' : ''} />
           </button>
         </div>
@@ -97,9 +99,9 @@ export function OverviewPage({
         <div className="timeline-hero__main">
           <div className="timeline-hero__tag">
             <Sparkles size={15} />
-            {week?.name ?? '本周'} · {week ? formatMonthDay(parseLocalDate(week.startDate)) : formatMonthDay(now)}
+            {week ? t('common.weekNumber', { number: week.number }) : t('common.week')} · {week ? formatMonthDay(parseLocalDate(week.startDate), language) : formatMonthDay(now, language)}
           </div>
-          <h2>{next ? '下一节课' : dayCourses.length ? '今日课程已结束' : '今天没有课程'}</h2>
+          <h2>{next ? t('overview.nextClass') : dayCourses.length ? t('overview.finished') : t('overview.noToday')}</h2>
           {next ? (
             <button className="hero-course" onClick={() => onCourseClick(next)}>
               <span className="hero-course__time">
@@ -110,7 +112,7 @@ export function OverviewPage({
               <span className="hero-course__copy">
                 <strong>{next.name}</strong>
                 <small>
-                  <MapPin size={14} /> {next.location || '地点待公布'}
+                  <MapPin size={14} /> {next.location || t('overview.locationTba')}
                 </small>
               </span>
               <ArrowRight size={19} className="hero-course__arrow" />
@@ -119,11 +121,11 @@ export function OverviewPage({
         </div>
         <aside className="timeline-hero__aside">
           <div className="day-ring" style={{ '--progress': `${dayProgress * 3.6}deg` } as React.CSSProperties}>
-            <div><strong>{dayProgress}%</strong><span>今日进度</span></div>
+            <div><strong>{dayProgress}%</strong><span>{t('overview.dayProgress')}</span></div>
           </div>
-          <p>{pending.length ? `${pending.length} 节课等待签到` : signins.length ? '今日签到已完成' : '暂无签到课程'}</p>
+          <p>{pending.length ? t('overview.pendingSignins', { count: pending.length }) : signins.length ? t('overview.signinComplete') : t('overview.noSignins')}</p>
           <button onClick={() => onNavigate('attendance')}>
-            {offline ? '查看签到状态' : '打开签到'}
+            {offline ? t('overview.viewSignin') : t('overview.openSignin')}
             <ArrowRight size={15} />
           </button>
         </aside>
@@ -132,26 +134,26 @@ export function OverviewPage({
       <section className="stat-row">
         <article className="stat-card">
           <span className="stat-card__icon stat-card__icon--green"><CalendarDays size={20} /></span>
-          <div><small>本周课程</small><strong>{new Set(courses.map((course) => course.id)).size}<em> 节</em></strong></div>
-          <span className="stat-card__caption">分布在这一周</span>
+          <div><small>{t('overview.weeklyCourses')}</small><strong>{new Set(courses.map((course) => course.id)).size}<em> {t('common.classUnit')}</em></strong></div>
+          <span className="stat-card__caption">{t('overview.distributed')}</span>
         </article>
         <article className="stat-card">
           <span className="stat-card__icon stat-card__icon--blue"><Clock3 size={20} /></span>
-          <div><small>今日课堂</small><strong>{Math.floor(totalMinutes / 60)}<em> 小时</em> {totalMinutes % 60}<em> 分</em></strong></div>
-          <span className="stat-card__caption">课堂时长</span>
+          <div><small>{t('overview.todayClasses')}</small><strong>{Math.floor(totalMinutes / 60)}<em> {t('overview.hours')}</em> {totalMinutes % 60}<em> {t('overview.minutes')}</em></strong></div>
+          <span className="stat-card__caption">{t('overview.classDuration')}</span>
         </article>
         <article className="stat-card">
           <span className="stat-card__icon stat-card__icon--orange"><TimerReset size={20} /></span>
-          <div><small>签到进度</small><strong>{signed.length}<em> / </em>{signins.length || 0}</strong></div>
-          <span className="stat-card__caption">{pending.length ? '还有课堂待处理' : '状态清楚'}</span>
+          <div><small>{t('overview.signinProgress')}</small><strong>{signed.length}<em> / </em>{signins.length || 0}</strong></div>
+          <span className="stat-card__caption">{pending.length ? t('overview.classesPending') : t('overview.statusClear')}</span>
         </article>
       </section>
 
       <div className="overview-columns">
         <section className="surface-card today-card">
           <header className="section-heading">
-            <div><span>今日课程</span><small>{dayCourses.length ? '按上课时间排序' : '轻松的一天'}</small></div>
-            <button className="text-button" onClick={() => onNavigate('schedule')}>完整课表 <ArrowRight size={15} /></button>
+            <div><span>{t('overview.todaySchedule')}</span><small>{dayCourses.length ? t('overview.sortedByTime') : t('overview.lightDay')}</small></div>
+            <button className="text-button" onClick={() => onNavigate('schedule')}>{t('overview.fullSchedule')} <ArrowRight size={15} /></button>
           </header>
           <div className="today-list">
             {dayCourses.length ? dayCourses.map((course, index) => (
@@ -166,14 +168,14 @@ export function OverviewPage({
                 </span>
                 <span className="today-item__card">
                   <strong>{course.name}</strong>
-                  <small><MapPin size={13} /> {course.location || '地点待公布'}</small>
+                  <small><MapPin size={13} /> {course.location || t('overview.locationTba')}</small>
                 </span>
-                <span className="today-item__section">第 {course.beginSection ?? '?'} 节</span>
+                <span className="today-item__section">{t('overview.section', { section: course.beginSection ?? '?' })}</span>
               </button>
             )) : (
               <div className="calm-empty">
                 <span><Compass size={24} /></span>
-                <div><strong>今天没有课程安排</strong><p>用这段时间阅读、运动，或者发一会儿呆。</p></div>
+                <div><strong>{t('overview.emptyTitle')}</strong><p>{t('overview.emptyDetail')}</p></div>
               </div>
             )}
           </div>
@@ -182,9 +184,9 @@ export function OverviewPage({
         <aside className="side-stack">
           <section className="surface-card signin-mini">
             <header className="section-heading">
-              <div><span>课堂签到</span></div>
+              <div><span>{t('overview.signin')}</span></div>
               <span className={`status-dot-label ${pending.length ? 'status-dot-label--warm' : ''}`}>
-                <i /> {pending.length ? `${pending.length} 待签到` : '状态正常'}
+                <i /> {pending.length ? t('overview.pending', { count: pending.length }) : t('overview.statusNormal')}
               </span>
             </header>
             {signins.length ? (
@@ -192,22 +194,22 @@ export function OverviewPage({
                 <div className="signin-mini__mark"><MapPin size={22} /></div>
                 <div>
                   <strong>{pending[0]?.courseName ?? signins[0].courseName}</strong>
-                  <p>{pending.length ? `${pending[0].beginTime} — ${pending[0].endTime}` : '签到已完成'}</p>
+                  <p>{pending.length ? `${pending[0].beginTime} — ${pending[0].endTime}` : t('overview.completed')}</p>
                 </div>
               </div>
             ) : (
-              <div className="signin-mini__empty">暂无签到课程</div>
+              <div className="signin-mini__empty">{t('overview.noSignins')}</div>
             )}
             <button className="wide-quiet-button" onClick={() => onNavigate('attendance')}>
-              查看全部签到 <ArrowRight size={15} />
+              {t('overview.viewAllSignins')} <ArrowRight size={15} />
             </button>
           </section>
         </aside>
       </div>
 
       <p className="last-updated">
-        {offline ? '当前显示本地快照' : '最近同步'}
-        {cachedAt ? ` · ${new Date(cachedAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}` : ''}
+        {offline ? t('overview.snapshot') : t('overview.lastSync')}
+        {cachedAt ? ` · ${new Date(cachedAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}` : ''}
       </p>
     </div>
   );

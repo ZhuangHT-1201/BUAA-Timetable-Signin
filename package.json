@@ -1,10 +1,18 @@
 {
-  "name": "classmark",
-  "version": "0.1.2",
+  "name": "buaa-timetable-signin",
+  "version": "0.2.0",
   "private": true,
-  "description": "课迹 - 一个无需自建服务器的课表与课堂签到客户端",
+  "description": "BUAA timetable and classroom sign-in for Windows and Android",
   "author": "Huiteng Zhuang",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ZhuangHT-1201/BUAA-Timetable-Signin.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ZhuangHT-1201/BUAA-Timetable-Signin/issues"
+  },
+  "homepage": "https://github.com/ZhuangHT-1201/BUAA-Timetable-Signin",
   "type": "module",
   "engines": {
     "node": ">=22.12.0"
@@ -48,8 +56,8 @@
     "wait-on": "^8.0.3"
   },
   "build": {
-    "appId": "com.classmark.desktop",
-    "productName": "课迹",
+    "appId": "io.github.zhuanght1201.buaatimetablesign",
+    "productName": "BUAA Timetable & Sign-in",
     "asar": true,
     "directories": {
       "output": "release",
@@ -73,14 +81,14 @@
           ]
         }
       ],
-      "artifactName": "Classmark-${version}-${arch}.${ext}"
+      "artifactName": "BUAA-Timetable-Signin-${version}-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "课迹",
+      "shortcutName": "BUAA Timetable & Sign-in",
       "unicode": true
     }
   },

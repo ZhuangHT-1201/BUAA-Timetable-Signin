@@ -11,6 +11,7 @@ import {
   bridgeRequest,
   clearNativeSession,
   openOfficialAuth,
+  syncMonitorSession,
   type BridgeRequestInput,
   type BridgeResponse,
 } from '../lib/bridge';
@@ -53,9 +54,17 @@ export interface CampusSession {
 interface SigninSession {
   userId: string;
   sessionId: string;
+  loginName: string;
 }
 
 type SigninTransport = 'direct' | 'webvpn';
+
+interface SigninEndpoints {
+  login: string;
+  schedule: string;
+  timestamp: string;
+  sign: string;
+}
 
 export class CampusError extends Error {
   readonly kind: 'auth' | 'network' | 'data' | 'permission' | 'unknown';
@@ -162,7 +171,7 @@ export class CampusService {
     }
   }
 
-  async connect(preference: ConnectionMode): Promise<CampusSession> {
+  async connect(preference: ConnectionMode, authTitle = 'BUAA Single Sign-On'): Promise<CampusSession> {
     const mode = await this.resolveMode(preference);
     const serviceUrl = `${BYXT_BASE}/index.do`;
     const startUrl =
@@ -176,7 +185,7 @@ export class CampusService {
         '/jwapp/sys/byrhmhsy',
         'gsmis.buaa.edu.cn/gsapp/sys',
       ],
-      title: '北京航空航天大学 · 统一身份认证',
+      title: authTitle,
     });
     if (!result.success || result.cancelled) {
       throw new CampusError('已取消登录。', 'auth');
@@ -532,8 +541,19 @@ export class CampusService {
   async loadSignins(): Promise<SigninClass[]> {
     const session = await this.ensureSigninSession();
     const transport = this.signinTransport ?? (this.mode === 'webvpn' ? 'webvpn' : 'direct');
+    const endpoints = this.signinEndpoints(transport);
+    const monitorUrl = (url: string) => transport === 'webvpn' ? toWebVpnUrl(url) : url;
+    await syncMonitorSession({
+      userId: session.userId,
+      sessionId: session.sessionId,
+      loginName: session.loginName,
+      loginUrl: monitorUrl(endpoints.login),
+      scheduleUrl: monitorUrl(endpoints.schedule),
+      timestampUrl: monitorUrl(endpoints.timestamp),
+      signUrl: monitorUrl(endpoints.sign),
+    });
     const response = await this.requestSignin({
-      url: `${ICASS_BASE}:8347/app/course/get_stu_course_sched.action?id=${encodeURIComponent(session.userId)}&dateStr=${toCompactDate(new Date())}`,
+      url: `${endpoints.schedule}?id=${encodeURIComponent(session.userId)}&dateStr=${toCompactDate(new Date())}`,
       headers: { sessionId: session.sessionId },
     }, transport);
     if (looksLikeLoginPage(response.body, response.url)) {
@@ -579,6 +599,7 @@ export class CampusService {
   }
 
   private async loginSignin(transport: SigninTransport): Promise<SigninSession> {
+    const endpoints = this.signinEndpoints(transport);
     const entry = await this.requestSignin(
       {
         url: `${ICASS_BASE}:8346/?type=jumpMyCenter`,
@@ -592,7 +613,7 @@ export class CampusService {
     if (!loginName) {
       throw new CampusError('课堂服务未返回登录凭据。', 'auth');
     }
-    const loginUrl = `${ICASS_BASE}:8347/app/user/login.action?password=&phone=${encodeURIComponent(loginName)}&userLevel=1&verificationType=2&verificationUrl=`;
+    const loginUrl = `${endpoints.login}?password=&phone=${encodeURIComponent(loginName)}&userLevel=1&verificationType=2&verificationUrl=`;
     const login = await this.requestSignin({ url: loginUrl }, transport);
     const payload = parseJsonPayload(login.body);
     const status = String(payload.STATUS ?? '').toLowerCase();
@@ -610,16 +631,29 @@ export class CampusService {
     if (!userId || !sessionId) {
       throw new CampusError('课堂服务没有返回有效会话。', 'auth');
     }
-    const timestampUrl =
-      transport === 'webvpn'
-        ? `${ICASS_BASE}:8347/app/common/get_timestamp.action`
-        : 'http://iclass.buaa.edu.cn:8081/app/common/get_timestamp.action';
-    const timestampResponse = await this.requestSignin({ url: timestampUrl }, transport);
+    const timestampResponse = await this.requestSignin({ url: endpoints.timestamp }, transport);
     const timestamp = String(parseJsonPayload(timestampResponse.body).timestamp ?? '');
     if (!timestamp) {
       throw new CampusError('课堂服务时间接口异常。', 'data');
     }
-    return { userId, sessionId };
+    return { userId, sessionId, loginName };
+  }
+
+  private signinEndpoints(transport: SigninTransport): SigninEndpoints {
+    if (transport === 'webvpn') {
+      return {
+        login: `${ICASS_BASE}:8347/app/user/login.action`,
+        schedule: `${ICASS_BASE}:8347/app/course/get_stu_course_sched.action`,
+        timestamp: `${ICASS_BASE}:8347/app/common/get_timestamp.action`,
+        sign: `${ICASS_BASE}:8347/app/course/stu_scan_sign.action`,
+      };
+    }
+    return {
+      login: `${ICASS_BASE}:8347/app/user/login.action`,
+      schedule: `${ICASS_BASE}:8347/app/course/get_stu_course_sched.action`,
+      timestamp: 'http://iclass.buaa.edu.cn:8081/app/common/get_timestamp.action',
+      sign: 'http://iclass.buaa.edu.cn:8081/eschool/app/course/stu_scan_sign.action',
+    };
   }
 
   private async requestSignin(
@@ -644,22 +678,19 @@ export class CampusService {
     }
   }
 
-  async signIn(courseId: string): Promise<{ success: boolean; message: string }> {
+  async signIn(
+    courseId: string,
+    allowRetry = true,
+  ): Promise<{ success: boolean; message: string }> {
     const session = await this.ensureSigninSession();
     const transport = this.signinTransport ?? (this.mode === 'webvpn' ? 'webvpn' : 'direct');
-    const timestampUrl =
-      transport === 'webvpn'
-        ? `${ICASS_BASE}:8347/app/common/get_timestamp.action`
-        : `http://iclass.buaa.edu.cn:8081/app/common/get_timestamp.action`;
-    const timestampResponse = await this.requestSignin({ url: timestampUrl }, transport);
+    const endpoints = this.signinEndpoints(transport);
+    const timestampResponse = await this.requestSignin({ url: endpoints.timestamp }, transport);
     const timestampPayload = parseJsonPayload(timestampResponse.body);
     const timestamp = String(timestampPayload.timestamp ?? '');
     if (!timestamp) throw new CampusError('未获取到签到服务器时间。', 'data');
 
-    const actionUrl =
-      transport === 'webvpn'
-        ? `${ICASS_BASE}:8347/app/course/stu_scan_sign.action?courseSchedId=${encodeURIComponent(courseId)}&timestamp=${encodeURIComponent(timestamp)}`
-        : `http://iclass.buaa.edu.cn:8081/eschool/app/course/stu_scan_sign.action?courseSchedId=${encodeURIComponent(courseId)}&timestamp=${encodeURIComponent(timestamp)}`;
+    const actionUrl = `${endpoints.sign}?courseSchedId=${encodeURIComponent(courseId)}&timestamp=${encodeURIComponent(timestamp)}`;
     const action = await this.requestSignin({
       url: actionUrl,
       method: 'POST',
@@ -669,7 +700,15 @@ export class CampusService {
       },
       body: new URLSearchParams({ id: session.userId }).toString(),
     }, transport);
-    return parseSigninAction(parseJsonPayload(action.body));
+    const actionPayload = parseJsonPayload(action.body);
+    const result = parseSigninAction(actionPayload);
+    const rawMessage = String(actionPayload.ERRMSG ?? '');
+    if (!result.success && allowRetry && rawMessage.includes('登录')) {
+      this.signinSession = null;
+      this.signinTransport = null;
+      return this.signIn(courseId, false);
+    }
+    return result;
   }
 
   async logout(): Promise<void> {

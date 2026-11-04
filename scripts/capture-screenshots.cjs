@@ -62,35 +62,38 @@ app.whenReady().then(async () => {
   });
   win.showInactive();
   await win.loadFile(path.join(root, 'dist', 'index.html'));
-  await win.webContents.executeJavaScript('localStorage.clear()');
+  await win.webContents.executeJavaScript(`
+    localStorage.clear();
+    localStorage.setItem('buaa-timetable-sign.language', 'en');
+  `);
   win.reload();
   await wait(650);
   await stabilize(win);
   await capture(win, 'login-desktop.png');
 
-  if (!(await clickByText(win, '演示模式'))) throw new Error('Demo button not found');
+  if (!(await clickByText(win, 'Demo mode'))) throw new Error('Demo button not found');
   await wait(700);
   await stabilize(win);
   await wait(120);
   await capture(win, 'overview-desktop.png');
 
-  if (!(await clickByText(win, '课表'))) throw new Error('Schedule navigation not found');
+  if (!(await clickByText(win, 'Timetable'))) throw new Error('Schedule navigation not found');
   await wait(350);
   await stabilize(win);
   await capture(win, 'schedule-desktop.png');
 
-  if (!(await clickByText(win, '签到'))) throw new Error('Attendance navigation not found');
+  if (!(await clickByText(win, 'Sign-in'))) throw new Error('Attendance navigation not found');
   await wait(350);
   await stabilize(win);
   await capture(win, 'attendance-desktop.png');
 
   win.setSize(420, 900);
   await wait(400);
-  await clickByText(win, '概览');
+  await clickByText(win, 'Overview');
   await wait(300);
   await stabilize(win);
   await capture(win, 'overview-mobile.png');
-  await clickByText(win, '课表');
+  await clickByText(win, 'Timetable');
   await wait(250);
   await stabilize(win);
   await capture(win, 'schedule-mobile.png');

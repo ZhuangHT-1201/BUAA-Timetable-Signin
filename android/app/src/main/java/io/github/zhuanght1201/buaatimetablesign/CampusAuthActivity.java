@@ -1,4 +1,4 @@
-package com.classmark.mobile;
+package io.github.zhuanght1201.buaatimetablesign;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -98,7 +98,7 @@ public class CampusAuthActivity extends AppCompatActivity {
         settings.setAllowFileAccessFromFileURLs(false);
         settings.setAllowUniversalAccessFromFileURLs(false);
         settings.setSaveFormData(false);
-        settings.setUserAgentString(settings.getUserAgentString() + " Classmark/0.1.2");
+        settings.setUserAgentString(settings.getUserAgentString() + " BUAA-Timetable-Signin/0.2.0");
         CookieManager cookies = CookieManager.getInstance();
         cookies.setAcceptCookie(true);
         cookies.setAcceptThirdPartyCookies(webView, true);

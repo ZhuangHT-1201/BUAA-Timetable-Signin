@@ -10,6 +10,8 @@ import {
   Wifi,
 } from 'lucide-react';
 import type { ConnectionMode, Profile } from '../types';
+import { useI18n } from '../i18n';
+import { LanguageToggle } from './LanguageToggle';
 import { Logo } from './Logo';
 
 interface LoginScreenProps {
@@ -25,12 +27,6 @@ interface LoginScreenProps {
   platform: string;
 }
 
-const MODES: Array<{ value: ConnectionMode; title: string; note: string }> = [
-  { value: 'auto', title: '自动连接', note: '自动选择连接方式' },
-  { value: 'direct', title: '校园网直连', note: '校园网络' },
-  { value: 'webvpn', title: 'WebVPN', note: '校外访问' },
-];
-
 export function LoginScreen({
   modePreference,
   onModeChange,
@@ -43,7 +39,13 @@ export function LoginScreen({
   error,
   platform,
 }: LoginScreenProps) {
-  const selected = MODES.find((item) => item.value === modePreference) ?? MODES[0];
+  const { t } = useI18n();
+  const modes: Array<{ value: ConnectionMode; title: string; note: string }> = [
+    { value: 'auto', title: t('login.mode.auto'), note: t('login.mode.autoNote') },
+    { value: 'direct', title: t('login.mode.direct'), note: t('login.mode.directNote') },
+    { value: 'webvpn', title: t('login.mode.webvpn'), note: t('login.mode.webvpnNote') },
+  ];
+  const selected = modes.find((item) => item.value === modePreference) ?? modes[0];
   const ModeIcon = modePreference === 'direct' ? Wifi : modePreference === 'webvpn' ? Globe2 : Sparkles;
 
   return (
@@ -55,29 +57,30 @@ export function LoginScreen({
       <section className="login-story">
         <header className="login-story__top">
           <Logo inverse />
+          <LanguageToggle />
           <span className="platform-pill">{platform}</span>
         </header>
 
         <div className="login-story__content">
           <div className="eyebrow eyebrow--light">
             <span />
-            校园日程
+            {t('login.eyebrow')}
           </div>
-          <h1>课表与签到</h1>
-          <p className="login-story__intro">登录后查看课程与签到状态。</p>
+          <h1>{t('login.title')}</h1>
+          <p className="login-story__intro">{t('login.intro')}</p>
 
           <div className="feature-rail">
             <article>
               <span className="feature-rail__icon"><CalendarCheck2 size={21} /></span>
-              <div><strong>课表</strong><p>学期、周次与今日课程</p></div>
+              <div><strong>{t('login.feature.timetable')}</strong><p>{t('login.feature.timetableDetail')}</p></div>
             </article>
             <article>
               <span className="feature-rail__icon"><MapPinCheck size={21} /></span>
-              <div><strong>签到</strong><p>查看课程并签到</p></div>
+              <div><strong>{t('login.feature.signin')}</strong><p>{t('login.feature.signinDetail')}</p></div>
             </article>
             <article>
               <span className="feature-rail__icon"><MonitorSmartphone size={21} /></span>
-              <div><strong>多端</strong><p>Windows 与 Android</p></div>
+              <div><strong>{t('login.feature.apps')}</strong><p>{t('login.feature.appsDetail')}</p></div>
             </article>
           </div>
         </div>
@@ -86,12 +89,12 @@ export function LoginScreen({
       <section className="login-panel-wrap">
         <div className="login-panel">
           <div className="login-panel__heading">
-            <h2>登录</h2>
-            <p>使用学校统一身份认证</p>
+            <h2>{t('login.heading')}</h2>
+            <p>{t('login.subheading')}</p>
           </div>
 
           <div className="login-field">
-            <label>连接方式</label>
+            <label>{t('login.connection')}</label>
             <div className="mode-select">
               <span className="mode-select__icon"><ModeIcon size={19} /></span>
               <div>
@@ -102,9 +105,9 @@ export function LoginScreen({
               <select
                 value={modePreference}
                 onChange={(event) => onModeChange(event.target.value as ConnectionMode)}
-                aria-label="连接方式"
+                aria-label={t('login.connection')}
               >
-                {MODES.map((mode) => <option key={mode.value} value={mode.value}>{mode.title}</option>)}
+                {modes.map((mode) => <option key={mode.value} value={mode.value}>{mode.title}</option>)}
               </select>
             </div>
           </div>
@@ -113,21 +116,21 @@ export function LoginScreen({
 
           <button className="primary-button primary-button--wide" onClick={onConnect} disabled={busy}>
             {busy ? <LoaderCircle size={19} className="spin" /> : null}
-            {busy ? '正在打开认证页面…' : '登录'}
+            {busy ? t('login.opening') : t('login.action')}
             {!busy && <ArrowRight size={18} className="primary-button__trailing" />}
           </button>
 
-          <div className="login-divider"><span>或</span></div>
+          <div className="login-divider"><span>{t('login.or')}</span></div>
 
           <button className="secondary-button secondary-button--wide" onClick={onDemo} disabled={busy}>
             <Sparkles size={18} />
-            演示模式
+            {t('login.demo')}
           </button>
 
           {canOpenOffline && (
             <button className="offline-link" onClick={onOffline} disabled={busy}>
               <CalendarCheck2 size={17} />
-              查看 {offlineProfile?.displayName ?? '最近账号'} 的离线课表
+              {t('login.offline', { name: offlineProfile?.displayName ?? '—' })}
               <ArrowRight size={15} />
             </button>
           )}

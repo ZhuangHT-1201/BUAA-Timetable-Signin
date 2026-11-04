@@ -1,14 +1,15 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "com.classmark.mobile"
+    namespace "io.github.zhuanght1201.buaatimetablesign"
     compileSdk rootProject.ext.compileSdkVersion
+    buildToolsVersion "35.0.0"
     defaultConfig {
-        applicationId "com.classmark.mobile"
+        applicationId "io.github.zhuanght1201.buaatimetablesign"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 3
-        versionName "0.1.2"
+        versionCode 4
+        versionName "0.2.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

@@ -1,4 +1,5 @@
 import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
+import { useI18n } from '../i18n';
 
 export interface ToastState {
   id: number;
@@ -12,6 +13,7 @@ interface ToastProps {
 }
 
 export function Toast({ toast, onClose }: ToastProps) {
+  const { t } = useI18n();
   if (!toast) return null;
   const Icon =
     toast.tone === 'success' ? CheckCircle2 : toast.tone === 'error' ? AlertCircle : Info;
@@ -21,7 +23,7 @@ export function Toast({ toast, onClose }: ToastProps) {
         <Icon size={19} strokeWidth={2.2} />
       </span>
       <span>{toast.message}</span>
-      <button className="icon-button toast__close" onClick={onClose} aria-label="关闭提示">
+      <button className="icon-button toast__close" onClick={onClose} aria-label={t('common.close')}>
         <X size={17} />
       </button>
     </div>

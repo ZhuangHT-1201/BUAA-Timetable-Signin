@@ -4,6 +4,21 @@
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-04
+
+### Changed
+
+- Renamed the project to BUAA Timetable & Sign-in.
+- Added Chinese and English UI with one-click language switching.
+- Rewrote the README in English and refreshed screenshots.
+- Simplified the sign-in page.
+- Background mode now submits sign-ins automatically instead of only sending notifications.
+
+### Added
+
+- Windows tray mode with persistent sign-in polling.
+- Android foreground service with native automatic sign-in.
+
 ## [0.1.2] - 2026-10-27
 
 ### Changed

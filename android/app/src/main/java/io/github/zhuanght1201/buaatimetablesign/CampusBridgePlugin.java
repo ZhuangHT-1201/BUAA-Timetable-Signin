@@ -1,8 +1,10 @@
-package com.classmark.mobile;
+package io.github.zhuanght1201.buaatimetablesign;
 
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
+import android.os.Build;
 import android.webkit.CookieManager;
 import androidx.activity.result.ActivityResult;
 import com.getcapacitor.JSObject;
@@ -37,6 +39,17 @@ public class CampusBridgePlugin extends Plugin {
             "d.buaa.edu.cn"
         )
     );
+    public static final String MONITOR_PREFS = "buaa_signin_monitor";
+    public static final String KEY_MONITOR_ENABLED = "enabled";
+    public static final String KEY_MONITOR_USER_ID = "user_id";
+    public static final String KEY_MONITOR_SESSION_ID = "session_id";
+    public static final String KEY_MONITOR_LOGIN_NAME = "login_name";
+    public static final String KEY_MONITOR_LOGIN_URL = "login_url";
+    public static final String KEY_MONITOR_SCHEDULE_URL = "schedule_url";
+    public static final String KEY_MONITOR_TIMESTAMP_URL = "timestamp_url";
+    public static final String KEY_MONITOR_SIGN_URL = "sign_url";
+    public static final String KEY_MONITOR_TEXT = "monitor_text";
+    public static final String KEY_OPEN_LABEL = "open_label";
 
     private boolean isAllowedUrl(String value) {
         try {
@@ -177,6 +190,54 @@ public class CampusBridgePlugin extends Plugin {
         }
     }
 
+    @PluginMethod
+    public void setBackgroundMonitor(PluginCall call) {
+        boolean enabled = Boolean.TRUE.equals(call.getBoolean("enabled", false));
+        SharedPreferences prefs = getContext().getSharedPreferences(MONITOR_PREFS, 0);
+        prefs
+            .edit()
+            .putBoolean(KEY_MONITOR_ENABLED, enabled)
+            .putString(KEY_MONITOR_TEXT, call.getString("monitorText", "Checking sign-in availability"))
+            .putString(KEY_OPEN_LABEL, call.getString("openLabel", "BUAA Timetable & Sign-in"))
+            .apply();
+        Intent intent = new Intent(getContext(), SigninMonitorService.class);
+        if (enabled) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                getContext().startForegroundService(intent);
+            } else {
+                getContext().startService(intent);
+            }
+        } else {
+            getContext().stopService(intent);
+        }
+        JSObject result = new JSObject();
+        result.put("enabled", enabled);
+        call.resolve(result);
+    }
+
+    @PluginMethod
+    public void syncMonitorSession(PluginCall call) {
+        String userId = call.getString("userId", "");
+        String sessionId = call.getString("sessionId", "");
+        String loginName = call.getString("loginName", "");
+        String loginUrl = call.getString("loginUrl", "");
+        String scheduleUrl = call.getString("scheduleUrl", "");
+        String timestampUrl = call.getString("timestampUrl", "");
+        String signUrl = call.getString("signUrl", "");
+        getContext()
+            .getSharedPreferences(MONITOR_PREFS, 0)
+            .edit()
+            .putString(KEY_MONITOR_USER_ID, userId)
+            .putString(KEY_MONITOR_SESSION_ID, sessionId)
+            .putString(KEY_MONITOR_LOGIN_NAME, loginName)
+            .putString(KEY_MONITOR_LOGIN_URL, loginUrl)
+            .putString(KEY_MONITOR_SCHEDULE_URL, scheduleUrl)
+            .putString(KEY_MONITOR_TIMESTAMP_URL, timestampUrl)
+            .putString(KEY_MONITOR_SIGN_URL, signUrl)
+            .apply();
+        call.resolve();
+    }
+
     private JSObject performRequest(
         String startUrl,
         String initialMethod,
@@ -203,7 +264,7 @@ public class CampusBridgePlugin extends Plugin {
             connection.setRequestProperty(
                 "User-Agent",
                 "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 " +
-                    "(KHTML, like Gecko) Chrome/131.0 Mobile Safari/537.36 Classmark/0.1.2"
+                    "(KHTML, like Gecko) Chrome/131.0 Mobile Safari/537.36 BUAA-Timetable-Signin/0.2.0"
             );
             String cookies = cookieManager.getCookie(currentUrl);
             if (!isBlank(cookies)) {

@@ -100,7 +100,7 @@ describe('sign-in parsers', () => {
 
   it('maps known sign-in failures to a safe message', () => {
     expect(parseSigninAction({ STATUS: 400, ERRMSG: '您今天已经签到过了' })).toEqual({
-      success: false,
+      success: true,
       message: '今天已经签过到了',
     });
     expect(parseSigninAction({ STATUS: 0, result: { stuSignStatus: '1' } })).toEqual({

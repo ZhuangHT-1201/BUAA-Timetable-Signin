@@ -23,7 +23,7 @@ jobs:
       - run: npm run build:desktop
       - uses: actions/upload-artifact@v4
         with:
-          name: classmark-windows
+          name: buaa-timetable-sign-windows
           path: release/*.exe
           if-no-files-found: error
 
@@ -53,7 +53,7 @@ jobs:
       - run: cd android && ./gradlew assembleDebug --no-daemon
       - uses: actions/upload-artifact@v4
         with:
-          name: classmark-android-debug
+          name: buaa-timetable-sign-android
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
@@ -67,9 +67,19 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
+      - name: Prepare release files
+        run: |
+          mv artifacts/buaa-timetable-sign-android/app-debug.apk artifacts/buaa-timetable-sign-android/BUAA-Timetable-Signin-android-debug.apk
+          cd artifacts
+          find . -type f \( -name "*.exe" -o -name "*.apk" \) -print0 \
+            | sort -z \
+            | xargs -0 sha256sum \
+            | sed -E 's#  \./[^/]+/#  #' \
+            > SHA256SUMS.txt
       - uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
           files: |
-            artifacts/classmark-windows/*.exe
-            artifacts/classmark-android-debug/*.apk
+            artifacts/buaa-timetable-sign-windows/*.exe
+            artifacts/buaa-timetable-sign-android/*.apk
+            artifacts/SHA256SUMS.txt

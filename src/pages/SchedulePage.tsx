@@ -1,6 +1,7 @@
 import { CalendarDays, ChevronLeft, ChevronRight, Clock3, LocateFixed, MapPin, RefreshCw } from 'lucide-react';
 import type { Course, Term, Week } from '../types';
 import { formatMonthDay, getDayCourses, parseLocalDate, weekDates } from '../lib/date';
+import { useI18n } from '../i18n';
 
 interface SchedulePageProps {
   terms: Term[];
@@ -45,6 +46,7 @@ export function SchedulePage({
   onCourseClick,
   onRefresh,
 }: SchedulePageProps) {
+  const { t, language } = useI18n();
   const currentWeek = weeks.find((week) => week.number === selectedWeek);
   const dates = weekDates(currentWeek);
   const todayIndex = dates.findIndex((date) => date.toDateString() === new Date().toDateString());
@@ -56,19 +58,19 @@ export function SchedulePage({
     <div className="page page--schedule">
       <header className="page-heading">
         <div>
-          <h1>课程表</h1>
-          <p className="page-heading__sub">本周课程安排</p>
+          <h1>{t('schedule.title')}</h1>
+          <p className="page-heading__sub">{t('schedule.subtitle')}</p>
         </div>
         <div className="heading-actions">
           <select
             className="term-select"
             value={selectedTermCode}
             onChange={(event) => onTermChange(event.target.value)}
-            aria-label="选择学期"
+            aria-label={t('schedule.selectTerm')}
           >
             {terms.map((term) => <option key={term.code} value={term.code}>{term.name}</option>)}
           </select>
-          <button className="icon-button soft" onClick={onRefresh} disabled={loading || offline} aria-label="刷新课表">
+          <button className="icon-button soft" onClick={onRefresh} disabled={loading || offline} aria-label={t('schedule.refresh')}>
             <RefreshCw size={19} className={loading ? 'spin' : ''} />
           </button>
         </div>
@@ -80,48 +82,48 @@ export function SchedulePage({
             className="icon-button"
             onClick={() => onWeekChange(selectedWeek - 1)}
             disabled={selectedWeek <= firstWeek || loading}
-            aria-label="上一周"
+            aria-label={t('schedule.previous')}
           >
             <ChevronLeft size={20} />
           </button>
           <div className="week-switcher__title">
-            <strong>{currentWeek?.name ?? `第${selectedWeek}周`}</strong>
+            <strong>{t('common.weekNumber', { number: currentWeek?.number ?? selectedWeek })}</strong>
             <small>
-              {currentWeek ? `${formatMonthDay(parseLocalDate(currentWeek.startDate))} — ${formatMonthDay(parseLocalDate(currentWeek.endDate))}` : '周次信息加载中'}
+              {currentWeek ? `${formatMonthDay(parseLocalDate(currentWeek.startDate), language)} — ${formatMonthDay(parseLocalDate(currentWeek.endDate), language)}` : t('schedule.loadingWeeks')}
             </small>
           </div>
           <button
             className="icon-button"
             onClick={() => onWeekChange(selectedWeek + 1)}
             disabled={selectedWeek >= lastWeek || loading}
-            aria-label="下一周"
+            aria-label={t('schedule.next')}
           >
             <ChevronRight size={20} />
           </button>
         </div>
         <div className="schedule-toolbar__meta">
-          {offline && <span className="offline-badge">本地快照</span>}
+          {offline && <span className="offline-badge">{t('schedule.snapshot')}</span>}
           <button
             className="today-button"
             onClick={() => onWeekChange(weeks.find((week) => week.current)?.number ?? firstWeek)}
           >
             <LocateFixed size={16} />
-            回到本周
+            {t('schedule.returnCurrent')}
           </button>
         </div>
       </section>
 
       <section className={`timetable-wrap ${loading ? 'is-loading' : ''}`}>
-        {loading && <div className="timetable-loading"><RefreshCw size={20} className="spin" /> 正在获取这一周…</div>}
+        {loading && <div className="timetable-loading"><RefreshCw size={20} className="spin" /> {t('schedule.loadingWeek')}</div>}
         <div className="timetable">
-          <div className="timetable__corner"><Clock3 size={16} /><span>节次</span></div>
+          <div className="timetable__corner"><Clock3 size={16} /><span>{t('schedule.section')}</span></div>
           {dates.map((date, index) => (
             <div
               className={`timetable__day ${index + 1 === todayIndex ? 'is-today' : ''}`}
               key={date.toISOString()}
               style={{ gridColumn: index + 2 }}
             >
-              <small>{['一', '二', '三', '四', '五', '六', '日'][index]}</small>
+              <small>{(language === 'zh' ? ['一', '二', '三', '四', '五', '六', '日'] : ['M', 'T', 'W', 'T', 'F', 'S', 'S'])[index]}</small>
               <strong>{date.getDate()}</strong>
               {index + 1 === todayIndex && <i />}
             </div>
@@ -166,7 +168,7 @@ export function SchedulePage({
                       } as React.CSSProperties}
                     >
                       <strong>{course.name}</strong>
-                      <span><MapPin size={12} /> {course.location || '地点待公布'}</span>
+                      <span><MapPin size={12} /> {course.location || t('overview.locationTba')}</span>
                       <small>{course.beginTime}–{course.endTime}</small>
                     </button>
                   );
@@ -183,18 +185,18 @@ export function SchedulePage({
           return (
             <article className={`agenda-day ${index + 1 === todayIndex ? 'is-today' : ''}`} key={date.toISOString()}>
               <header>
-                <span>{['周一', '周二', '周三', '周四', '周五', '周六', '周日'][index]}</span>
-                <strong>{formatMonthDay(date)}</strong>
-                {index + 1 === todayIndex && <i>今天</i>}
+                <span>{(language === 'zh' ? ['周一', '周二', '周三', '周四', '周五', '周六', '周日'] : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])[index]}</span>
+                <strong>{formatMonthDay(date, language)}</strong>
+                {index + 1 === todayIndex && <i>{t('common.today')}</i>}
               </header>
               {dayCourses.length ? dayCourses.map((course) => (
                 <button className="agenda-course" onClick={() => onCourseClick(course)} key={course.id}>
                   <i style={{ background: course.color }} />
                   <span className="agenda-course__time">{course.beginTime}<small>{course.endTime}</small></span>
-                  <span className="agenda-course__copy"><strong>{course.name}</strong><small><MapPin size={12} />{course.location || '地点待公布'}</small></span>
+                  <span className="agenda-course__copy"><strong>{course.name}</strong><small><MapPin size={12} />{course.location || t('overview.locationTba')}</small></span>
                   <ChevronRight size={17} />
                 </button>
-              )) : <p className="agenda-empty"><CalendarDays size={16} /> 没有课程安排</p>}
+              )) : <p className="agenda-empty"><CalendarDays size={16} /> {t('schedule.noCourses')}</p>}
             </article>
           );
         })}

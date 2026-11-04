@@ -345,6 +345,33 @@ p {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 14px;
+}
+
+.language-toggle {
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-size: 9px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.language-toggle:hover {
+  color: var(--green-700);
+  border-color: #bfd0c8;
+}
+
+.language-toggle--compact {
+  width: 32px;
+  padding: 0;
 }
 
 .platform-pill {
@@ -354,6 +381,13 @@ p {
   color: rgba(246, 252, 249, 0.68);
   font-size: 11px;
   letter-spacing: 0.08em;
+}
+
+.login-story__top .language-toggle {
+  margin-left: auto;
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(246, 252, 249, 0.76);
 }
 
 .login-story__content {
@@ -757,6 +791,20 @@ p {
 
 .sidebar__top .brand__type strong {
   font-size: 19px;
+}
+
+.sidebar__tools {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.sidebar__tools .language-toggle {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  background: transparent;
+  color: #82938c;
 }
 
 .sidebar__session {
@@ -2437,6 +2485,44 @@ p {
 
 .settings-row--button {
   cursor: pointer;
+}
+
+.settings-row--toggle .language-toggle {
+  margin-left: auto;
+}
+
+.toggle-switch {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  flex: none;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 99px;
+  background: #dbe2dd;
+  cursor: pointer;
+  transition: background 160ms ease;
+}
+
+.toggle-switch span {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(20, 50, 43, 0.2);
+  transition: transform 160ms ease;
+}
+
+.toggle-switch.is-on {
+  background: var(--green-700);
+}
+
+.toggle-switch.is-on span {
+  transform: translateX(16px);
 }
 
 .settings-row--button:hover {

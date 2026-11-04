@@ -1,9 +1,10 @@
 import type { CachedSchedule, ConnectionMode, Profile, ResolvedConnectionMode } from '../types';
 
-const CACHE_KEY = 'classmark.schedule.v1';
-const PROFILE_KEY = 'classmark.profile.v1';
-const MODE_KEY = 'classmark.mode.v1';
-const PREFERENCE_KEY = 'classmark.mode-preference.v1';
+const CACHE_KEY = 'buaa-timetable-sign.schedule.v1';
+const PROFILE_KEY = 'buaa-timetable-sign.profile.v1';
+const MODE_KEY = 'buaa-timetable-sign.mode.v1';
+const PREFERENCE_KEY = 'buaa-timetable-sign.mode-preference.v1';
+const BACKGROUND_KEY = 'buaa-timetable-sign.background.v1';
 
 export function saveSchedule(cache: CachedSchedule): void {
   localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
@@ -48,10 +49,19 @@ export function loadPreference(): ConnectionMode {
   return value === 'direct' || value === 'webvpn' ? value : 'auto';
 }
 
+export function saveBackgroundEnabled(enabled: boolean): void {
+  localStorage.setItem(BACKGROUND_KEY, enabled ? '1' : '0');
+}
+
+export function loadBackgroundEnabled(): boolean {
+  return localStorage.getItem(BACKGROUND_KEY) === '1';
+}
+
 export function clearLocalData(keepSchedule = true): void {
   localStorage.removeItem(PROFILE_KEY);
   localStorage.removeItem(MODE_KEY);
   localStorage.removeItem(PREFERENCE_KEY);
+  localStorage.removeItem(BACKGROUND_KEY);
   if (!keepSchedule) localStorage.removeItem(CACHE_KEY);
 }
 

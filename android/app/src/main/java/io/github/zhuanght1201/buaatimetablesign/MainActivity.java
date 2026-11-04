@@ -1,4 +1,4 @@
-package com.classmark.mobile;
+package io.github.zhuanght1201.buaatimetablesign;
 
 import android.os.Bundle;
 import com.getcapacitor.BridgeActivity;

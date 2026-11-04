@@ -1,9 +1,12 @@
+import { useI18n } from '../i18n';
+
 interface LogoProps {
   compact?: boolean;
   inverse?: boolean;
 }
 
 export function Logo({ compact = false, inverse = false }: LogoProps) {
+  const { t } = useI18n();
   return (
     <div className={`brand ${compact ? 'brand--compact' : ''} ${inverse ? 'brand--inverse' : ''}`}>
       <span className="brand__mark" aria-hidden="true">
@@ -17,8 +20,8 @@ export function Logo({ compact = false, inverse = false }: LogoProps) {
       </span>
       {!compact && (
         <span className="brand__type">
-          <strong>课迹</strong>
-          <small>CLASSMARK</small>
+          <strong>{t('app.brand')}</strong>
+          <small>{t('app.brandMark')}</small>
         </span>
       )}
     </div>

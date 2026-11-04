@@ -188,7 +188,7 @@ export function parseSigninAction(payload: JsonRecord): {
   const rawMessage = asString(payload.ERRMSG);
   if (success) return { success: true, message: rawMessage || '签到成功' };
   if (rawMessage?.includes('已签到') || rawMessage?.includes('已经签到')) {
-    return { success: false, message: '今天已经签过到了' };
+    return { success: true, message: '今天已经签过到了' };
   }
   if (rawMessage?.includes('未开始')) {
     return { success: false, message: '签到尚未开始' };

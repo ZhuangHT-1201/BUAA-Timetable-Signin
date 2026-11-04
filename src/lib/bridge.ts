@@ -25,6 +25,10 @@ interface NativeCampusPlugin {
   }>;
   clearSession(): Promise<void>;
   openExternal(input: { url: string }): Promise<void>;
+  setBackgroundMonitor(input: Record<string, unknown>): Promise<{
+    enabled: boolean;
+  }>;
+  syncMonitorSession(input: Record<string, unknown>): Promise<void>;
 }
 
 const nativePlugin = registerPlugin<NativeCampusPlugin>('CampusBridge');
@@ -69,4 +73,34 @@ export async function openExternal(url: string): Promise<void> {
   if (window.CampusBridge) return window.CampusBridge.openExternal(url);
   if (Capacitor.isNativePlatform()) return nativePlugin.openExternal({ url });
   window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+export async function setBackgroundMonitor(input: {
+  enabled: boolean;
+  openLabel: string;
+  quitLabel: string;
+  monitorText: string;
+}): Promise<{ enabled: boolean }> {
+  if (window.CampusBridge) {
+    return window.CampusBridge.setBackgroundMonitor(input);
+  }
+  if (Capacitor.isNativePlatform()) {
+    return nativePlugin.setBackgroundMonitor(input);
+  }
+  return { enabled: input.enabled };
+}
+
+export async function syncMonitorSession(input: {
+  userId: string;
+  sessionId: string;
+  loginName: string;
+  loginUrl: string;
+  scheduleUrl: string;
+  timestampUrl: string;
+  signUrl: string;
+}): Promise<void> {
+  if (window.CampusBridge) return;
+  if (Capacitor.isNativePlatform()) {
+    await nativePlugin.syncMonitorSession(input);
+  }
 }

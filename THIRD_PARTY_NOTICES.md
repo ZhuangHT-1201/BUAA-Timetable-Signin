@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-课迹使用并分发以下主要开源组件。完整依赖版本以 `package-lock.json` 和 Android Gradle 配置为准。
+BUAA Timetable & Sign-in 使用并分发以下主要开源组件。完整依赖版本以 `package-lock.json` 和 Android Gradle 配置为准。
 
 | Component | License | Use |
 | --- | --- | --- |

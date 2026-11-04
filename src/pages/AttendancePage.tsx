@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import type { SigninClass } from '../types';
 import { formatFullDate } from '../lib/date';
+import { useI18n } from '../i18n';
 
 interface AttendancePageProps {
   signins: SigninClass[];
@@ -28,6 +29,7 @@ export function AttendancePage({
   onRefresh,
   onSignin,
 }: AttendancePageProps) {
+  const { t, language } = useI18n();
   const pending = signins.filter((item) => item.status === 0);
   const signed = signins.filter((item) => item.status === 1);
 
@@ -35,12 +37,12 @@ export function AttendancePage({
     <div className="page page--attendance">
       <header className="page-heading">
         <div>
-          <h1>课堂签到</h1>
-          <p className="page-heading__sub">{formatFullDate(new Date())}</p>
+          <h1>{t('attendance.title')}</h1>
+          <p className="page-heading__sub">{formatFullDate(new Date(), language)}</p>
         </div>
         <button className="refresh-button" onClick={onRefresh} disabled={loading || offline}>
           <RefreshCw size={17} className={loading ? 'spin' : ''} />
-          刷新状态
+          {t('attendance.refresh')}
         </button>
       </header>
 
@@ -48,38 +50,38 @@ export function AttendancePage({
         <div className="attendance-summary__main">
           <span className="attendance-summary__icon"><MapPin size={24} /></span>
           <div>
-            <p>今日签到</p>
-            <h2>{pending.length ? `还有 ${pending.length} 节课待处理` : signins.length ? '全部签到已完成' : '签到课程尚未发布'}</h2>
+            <p>{t('attendance.today')}</p>
+            <h2>{pending.length ? t('attendance.pendingSummary', { count: pending.length }) : signins.length ? t('attendance.allComplete') : t('attendance.notPublished')}</h2>
           </div>
         </div>
         <div className="attendance-summary__stats">
-          <div><strong>{pending.length}</strong><span>待签到</span></div>
+          <div><strong>{pending.length}</strong><span>{t('attendance.pending')}</span></div>
           <i />
-          <div><strong>{signed.length}</strong><span>已完成</span></div>
+          <div><strong>{signed.length}</strong><span>{t('attendance.completed')}</span></div>
           <i />
-          <div><strong>{signins.length}</strong><span>全部课堂</span></div>
+          <div><strong>{signins.length}</strong><span>{t('attendance.allClasses')}</span></div>
         </div>
       </section>
 
       <section className="surface-card attendance-list-card attendance-list-card--wide">
           <header className="section-heading">
-            <div><span>今日课堂</span><small>{signins.length} 条签到记录</small></div>
-            <span className="live-label"><i /> 实时状态</span>
+            <div><span>{t('attendance.todayClasses')}</span><small>{t('attendance.records', { count: signins.length })}</small></div>
+            <span className="live-label"><i /> {t('attendance.live')}</span>
           </header>
 
           {offline ? (
             <div className="attendance-empty">
               <span><RefreshCw size={27} /></span>
-              <h3>离线模式不可签到</h3>
+              <h3>{t('attendance.offline')}</h3>
             </div>
           ) : loading && !signins.length ? (
-            <div className="attendance-empty"><LoaderCircle className="spin" size={26} /><h3>正在查询签到课程</h3></div>
+            <div className="attendance-empty"><LoaderCircle className="spin" size={26} /><h3>{t('attendance.loading')}</h3></div>
           ) : error && !signins.length ? (
             <div className="attendance-empty">
               <span><RefreshCw size={27} /></span>
-              <h3>无法获取签到</h3>
+              <h3>{t('attendance.error')}</h3>
               <p>{error}</p>
-              <button className="wide-quiet-button" onClick={onRefresh}>重试 <RefreshCw size={14} /></button>
+              <button className="wide-quiet-button" onClick={onRefresh}>{t('attendance.retry')} <RefreshCw size={14} /></button>
             </div>
           ) : signins.length ? (
             <div className="attendance-items">
@@ -96,12 +98,12 @@ export function AttendancePage({
                     <strong>{item.courseName}</strong>
                     <p>
                       {item.status === 1
-                        ? '签到成功'
-                        : '未签到'}
+                        ? t('attendance.success')
+                        : t('attendance.notSigned')}
                     </p>
                   </div>
                   {item.status === 1 ? (
-                    <span className="signed-chip"><CheckCircle2 size={15} /> 已签到</span>
+                    <span className="signed-chip"><CheckCircle2 size={15} /> {t('attendance.signed')}</span>
                   ) : (
                     <button
                       className="signin-button"
@@ -109,7 +111,7 @@ export function AttendancePage({
                       disabled={Boolean(signingCourseId)}
                     >
                       {signingCourseId === item.courseId ? <LoaderCircle size={16} className="spin" /> : <MapPin size={16} />}
-                      {signingCourseId === item.courseId ? '签到中' : '立即签到'}
+                      {signingCourseId === item.courseId ? t('attendance.signing') : t('attendance.signNow')}
                     </button>
                   )}
                 </article>
@@ -118,8 +120,8 @@ export function AttendancePage({
           ) : (
             <div className="attendance-empty">
               <span><TimerReset size={27} /></span>
-              <h3>今天暂无签到课程</h3>
-              <button className="wide-quiet-button" onClick={onRefresh}>刷新 <RefreshCw size={14} /></button>
+              <h3>{t('attendance.none')}</h3>
+              <button className="wide-quiet-button" onClick={onRefresh}>{t('attendance.refresh')} <RefreshCw size={14} /></button>
             </div>
           )}
       </section>
