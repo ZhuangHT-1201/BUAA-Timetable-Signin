@@ -76,7 +76,7 @@ jobs:
             | xargs -0 sha256sum \
             | sed -E 's#  \./[^/]+/#  #' \
             > SHA256SUMS.txt
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           generate_release_notes: true
           files: |
