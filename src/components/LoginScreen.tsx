@@ -66,7 +66,11 @@ export function LoginScreen({
             <span />
             {t('login.eyebrow')}
           </div>
-          <h1>{t('login.title')}</h1>
+          <h1>
+            {t('login.title').split('\n').map((line) => (
+              <span key={line}>{line}</span>
+            ))}
+          </h1>
           <p className="login-story__intro">{t('login.intro')}</p>
 
           <div className="feature-rail">

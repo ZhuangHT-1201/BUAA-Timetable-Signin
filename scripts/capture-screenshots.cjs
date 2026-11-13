@@ -51,7 +51,7 @@ app.whenReady().then(async () => {
     width: 1440,
     height: 900,
     show: true,
-    backgroundColor: '#f3f5f0',
+    backgroundColor: '#f3ede3',
     webPreferences: {
       preload: path.join(__dirname, 'screenshot-preload.cjs'),
       contextIsolation: true,

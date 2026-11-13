@@ -11,11 +11,12 @@ export function Logo({ compact = false, inverse = false }: LogoProps) {
     <div className={`brand ${compact ? 'brand--compact' : ''} ${inverse ? 'brand--inverse' : ''}`}>
       <span className="brand__mark" aria-hidden="true">
         <svg viewBox="0 0 44 44" fill="none">
-          <rect x="6" y="8" width="32" height="30" rx="10" fill="currentColor" opacity=".15" />
-          <path d="M14 7v5M30 7v5" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
-          <rect x="11" y="10" width="22" height="22" rx="6" stroke="currentColor" strokeWidth="2.4" />
-          <path d="M11 17h22" stroke="currentColor" strokeWidth="2.4" />
-          <path d="m17 24 3.2 3.2L28 20.7" stroke="currentColor" strokeWidth="2.7" strokeLinecap="round" strokeLinejoin="round" />
+          <rect x="4" y="4" width="36" height="36" rx="5" fill="currentColor" />
+          <path d="M11 10h22v25H11z" fill="var(--logo-paper, #fffaf0)" />
+          <path d="M11 17h22" stroke="currentColor" strokeWidth="2" />
+          <path d="M16 7v5M28 7v5" stroke="var(--logo-paper, #fffaf0)" strokeWidth="2.5" strokeLinecap="square" />
+          <rect x="15" y="22" width="12" height="3" fill="var(--logo-accent, #c54d3a)" />
+          <path d="m15.5 29 3 3 6-6" stroke="var(--logo-accent, #c54d3a)" strokeWidth="2.5" strokeLinecap="square" strokeLinejoin="miter" />
         </svg>
       </span>
       {!compact && (
